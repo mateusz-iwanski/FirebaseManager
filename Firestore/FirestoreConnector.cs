@@ -5,8 +5,9 @@ using System;
 using System.Threading.Tasks;
 using static Google.Cloud.Firestore.V1.StructuredQuery.Types;
 using FirebaseManager.Exceptions;
+using FirebaseManager.Firebase;
 
-namespace FirebaseManager.Firebase
+namespace FirebaseManager.Firestore
 {
     /// <summary>
     /// FirestoreConnector is used to connect to Firestore database.
@@ -40,6 +41,6 @@ namespace FirebaseManager.Firebase
             return _db;
         }
 
-        
+
     }
 }

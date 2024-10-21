@@ -4,9 +4,9 @@ using System.Reflection;
 using System.Threading.Tasks;
 using NLog;
 
-namespace FirebaseManager.Firebase
+namespace FirebaseManager.Firestore
 {
-    public class FirestoreService: IFirestoreService
+    public class FirestoreService : IFirestoreService
     {
         private readonly IFirestoreConnector _firestoreConnector;
         private readonly FirestoreDb _firestoreDb;
@@ -30,16 +30,16 @@ namespace FirebaseManager.Firebase
         /// <returns>true if created, false if exists</returns>
         public async Task<bool> InsertDto(IFirestoreDto dto)
         {
-            CollectionReference collection = _firestoreDb.Collection(dto.CollectionName);            
+            CollectionReference collection = _firestoreDb.Collection(dto.CollectionName);
             DocumentReference document = collection.Document(dto.DocumentUniqueField);
 
             if (!await IsDtoExists(document))
-            { 
+            {
                 await collection.Document(dto.DocumentUniqueField).SetAsync(dto);
                 _logger.Info($"Firestore document '{dto.DocumentUniqueField}' in collection '{dto.CollectionName}' created.");
                 return true;
             }
-            
+
             _logger.Info($"Firestore document '{dto.DocumentUniqueField}' in collection '{dto.CollectionName}' already exists.");
 
             return false;

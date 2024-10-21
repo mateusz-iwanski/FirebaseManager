@@ -1,7 +1,7 @@
 ﻿using Google.Cloud.Firestore;
 using System.Threading.Tasks;
 
-namespace FirebaseManager.Firebase
+namespace FirebaseManager.Firestore
 {
     public interface IFirestoreService
     {

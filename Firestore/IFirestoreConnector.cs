@@ -1,6 +1,6 @@
 ﻿using Google.Cloud.Firestore;
 
-namespace FirebaseManager.Firebase
+namespace FirebaseManager.Firestore
 {
     public interface IFirestoreConnector
     {
