@@ -31,10 +31,12 @@ namespace FirebaseManager.Firebase
     {
         private string? _projectId;
         private string? _apiKeyFilePath;
+        private string? _storageBucketName;
+        private string? _localDirectoryForFileToDownload;
 
         public string? ProjectId
         {
-            get { return _projectId ?? throw new SettingsException($"In appsettings.json Firebase->Firestore->ProjectId not exists"); }
+            get { return _projectId ?? throw new SettingsException($"In appsettings.json Firebase->ProjectId not exists"); }
             set => _projectId = value;
         }
 
@@ -42,6 +44,18 @@ namespace FirebaseManager.Firebase
         {
             get { return _apiKeyFilePath ?? throw new SettingsException($"In appsettings.json Firebase->ApiKeyFilePath not exists"); }
             set => _apiKeyFilePath = value;
+        }
+
+        public string? StorageBucketName
+        {
+            get { return _storageBucketName ?? throw new SettingsException($"In appsettings.json Firebase->StorageBucketName not exists"); }
+            set => _storageBucketName = value;
+        }
+
+        public string? LocalDirectoryForfileToDownload
+        {
+            get { return _localDirectoryForFileToDownload ?? throw new SettingsException($"In appsettings.json Firebase->LocalDirectoryForfileToDownload not exists"); }
+            set => _localDirectoryForFileToDownload = value;
         }
     }
 }
