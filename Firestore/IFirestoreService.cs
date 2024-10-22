@@ -5,9 +5,11 @@ namespace FirebaseManager.Firestore
 {
     public interface IFirestoreService
     {
-        Task<bool> InsertDto(IFirestoreDto dto);
-        Task<bool> UpdateDto(IFirestoreDto dto);
-        Task<bool> DeleteDto(IFirestoreDto dto);
+        Task<bool> InsertDtoAsync(IFirestoreDto dto);
+        Task<bool> UpdateDtoAsync(IFirestoreDto dto);
+        Task<bool> DeleteDtoAsync(IFirestoreDto dto);
+        Task<bool> DeleteDtoAsync(DocumentReference docRef);
         Task<T> ReadDocumentAsync<T>(string collectionName, string documentUniqueField) where T : IFirestoreDto;
+        Task<bool> InsertDtoWithSubDtoAsync(IFirestoreDto dto, IFirestoreDto subCollectionDto);
     }
 }
