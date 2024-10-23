@@ -24,6 +24,8 @@ namespace FirebaseManager.Firestore
             _firestoreDb = firestoreConnector.GetFirestoreDb();
         }
 
+        public FirestoreDb GetFirestoreDb() => _firestoreDb;
+
         /// <summary>
         /// Insert the collection (IFirestoreDto.CollectionName) if it does not exist 
         /// with the document ID (IFirestoreDto.DocumentUniqueField).
@@ -35,22 +37,25 @@ namespace FirebaseManager.Firestore
         {
             DocumentReference document = _firestoreDb.Collection(dto.CollectionName).Document(dto.DocumentUniqueField);
 
+            // if DTO document has declare document ID
             if (dto.DocumentUniqueField != null)
             {
-
+                // create if doesn't exist
                 if (!await IsDtoExistsAsync(document))
                 {
                     await document.SetAsync(dto);
                     _logger.Info($"Firestore document '{document.Id}' in collection '{document.Parent.Id}' created.");
                     return true;
                 }
+                // do nothing if exists
                 else
                 {
-                    _logger.Info($"Can't insert. Firestore document '{document.Id}' in collection '{document.Parent.Id}' already exists.");
+                    _logger.Info($"Firestore document '{document.Id}' in collection '{document.Parent.Id}' already exists.");
                     return false;
                 }
 
             }
+            // if DTO document ID is null add document with random ID
             else
             {
                 CollectionReference collection = _firestoreDb.Collection(dto.CollectionName);
@@ -188,11 +193,13 @@ namespace FirebaseManager.Firestore
         /// </summary>
         /// <param name="document">CollectionReference->Document(dto.DocumentUniqueField)</param>
         /// <returns></returns>
-        private async Task<bool> IsDtoExistsAsync(DocumentReference document)
+        public async Task<bool> IsDtoExistsAsync(DocumentReference document)
         {
             DocumentSnapshot snapshot = await document.GetSnapshotAsync();
             return snapshot.Exists;
         }
+
+
     }
 
 
