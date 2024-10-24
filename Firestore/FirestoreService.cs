@@ -6,6 +6,8 @@ using NLog;
 using Google.Cloud.Firestore.V1;
 using FirebaseAdmin;
 using FirebaseManager.Exceptions;
+using System.Collections.Concurrent;
+using System.Reflection.Metadata;
 
 namespace FirebaseManager.Firestore
 {
@@ -14,11 +16,13 @@ namespace FirebaseManager.Firestore
         private readonly IFirestoreConnector _firestoreConnector;
         private readonly FirestoreDb _firestoreDb;
         private readonly ILogger _logger;
+        private readonly ConcurrentDictionary<string, DocumentSnapshot> _cache;
 
         public FirestoreService(IFirestoreConnector firestoreConnector, ILogger logger)
         {
             _firestoreConnector = firestoreConnector;
             _logger = logger;
+            _cache = new ConcurrentDictionary<string, DocumentSnapshot>();
 
             _firestoreConnector.Connect();
             _firestoreDb = firestoreConnector.GetFirestoreDb();
@@ -32,34 +36,32 @@ namespace FirebaseManager.Firestore
         /// If document IFirestoreDto.DocumentUniqueField is null, the document will have random id.
         /// </summary>
         /// <param name="dto"></param>
-        /// <returns>true if created, false if exists</returns>
+        /// <returns>true if created, false if exists</returns>        
         public async Task<bool> InsertDtoAsync(IFirestoreDto dto)
-        {
-            DocumentReference document = _firestoreDb.Collection(dto.CollectionName).Document(dto.DocumentUniqueField);
+        {            
 
-            // if DTO document has declare document ID
             if (dto.DocumentUniqueField != null)
             {
-                // create if doesn't exist
+                DocumentReference document = _firestoreDb.Collection(dto.CollectionName).Document(dto.DocumentUniqueField);
+
                 if (!await IsDtoExistsAsync(document))
                 {
                     await document.SetAsync(dto);
+                    _cache[document.Path] = await document.GetSnapshotAsync();
                     _logger.Info($"Firestore document '{document.Id}' in collection '{document.Parent.Id}' created.");
                     return true;
                 }
-                // do nothing if exists
                 else
                 {
                     _logger.Info($"Firestore document '{document.Id}' in collection '{document.Parent.Id}' already exists.");
                     return false;
                 }
-
             }
-            // if DTO document ID is null add document with random ID
             else
             {
                 CollectionReference collection = _firestoreDb.Collection(dto.CollectionName);
                 DocumentReference documentRandomId = await collection.AddAsync(dto);
+                _cache[documentRandomId.Path] = await documentRandomId.GetSnapshotAsync();
                 _logger.Info($"Firestore document '{documentRandomId.Id}' in collection '{documentRandomId.Parent.Id}' created with random ID.");
                 return true;
             }
@@ -69,7 +71,7 @@ namespace FirebaseManager.Firestore
         /// Update document (IFirestoreDto.DocumentUniqueField) in collection (IFirestoreDto.CollectionName) with the DTO object.
         /// </summary>
         /// <param name="dto"></param>
-        /// <returns>true if updated, false if the document does not exist</returns>
+        /// <returns>true if updated, false if the document does not exist</returns>        
         public async Task<bool> UpdateDtoAsync(IFirestoreDto dto)
         {
             DocumentReference document = _firestoreDb.Collection(dto.CollectionName).Document(dto.DocumentUniqueField);
@@ -77,12 +79,12 @@ namespace FirebaseManager.Firestore
             if (await IsDtoExistsAsync(document))
             {
                 await document.SetAsync(dto);
+                _cache[document.Path] = await document.GetSnapshotAsync();
                 _logger.Info($"Firestore document '{document.Id}' in collection '{document.Parent.Id}' updated.");
                 return true;
             }
 
             _logger.Info($"Can't update. Firestore document '{document.Id}' in collection '{document.Parent.Id}' does not exist.");
-
             return false;
         }
 
@@ -96,12 +98,12 @@ namespace FirebaseManager.Firestore
             if (await IsDtoExistsAsync(docRef))
             {
                 await docRef.DeleteAsync();
+                _cache.TryRemove(docRef.Path, out _);
                 _logger.Info($"Firestore document '{docRef.Id}' in collection '{docRef.Parent.Id}' deleted.");
                 return true;
             }
 
             _logger.Info($"Can't delete. Firestore document '{docRef.Id}' in collection '{docRef.Parent.Id}' does not exist.");
-
             return false;
         }
 
@@ -118,12 +120,12 @@ namespace FirebaseManager.Firestore
             if (await IsDtoExistsAsync(document))
             {
                 await collection.Document(dto.DocumentUniqueField).DeleteAsync();
+                _cache.TryRemove(document.Path, out _);
                 _logger.Info($"Firestore document '{dto.DocumentUniqueField}' in collection '{dto.CollectionName}' deleted.");
                 return true;
             }
 
             _logger.Info($"Firestore document '{dto.DocumentUniqueField}' in collection '{dto.CollectionName}' does not exist.");
-
             return false;
         }
 
@@ -149,6 +151,7 @@ namespace FirebaseManager.Firestore
                 
                 // Add the document to the sub-collection
                 await docInsubCollection.SetAsync(subCollectionDto);
+                _cache[docRef.Path] = await docRef.GetSnapshotAsync();
 
                 _logger.Info($"Firestore document '{docInsubCollection.Id}' in sub-collection '{docInsubCollection.Parent.Id}' created.");
             }
@@ -159,6 +162,7 @@ namespace FirebaseManager.Firestore
 
                 // Add the document to the sub-collection
                 DocumentReference subDocRef = await subCollection.AddAsync(subCollectionDto);
+                _cache[docRef.Path] = await docRef.GetSnapshotAsync();
             }
 
             return true;
@@ -193,9 +197,21 @@ namespace FirebaseManager.Firestore
         /// </summary>
         /// <param name="document">CollectionReference->Document(dto.DocumentUniqueField)</param>
         /// <returns></returns>
+        //public async Task<bool> IsDtoExistsAsync(DocumentReference document)
+        //{
+        //    DocumentSnapshot snapshot = await document.GetSnapshotAsync();
+        //    return snapshot.Exists;
+        //}
+
         public async Task<bool> IsDtoExistsAsync(DocumentReference document)
         {
+            if (_cache.TryGetValue(document.Path, out var cachedSnapshot))
+            {
+                return cachedSnapshot.Exists;
+            }
+
             DocumentSnapshot snapshot = await document.GetSnapshotAsync();
+            _cache[document.Path] = snapshot;
             return snapshot.Exists;
         }
 
