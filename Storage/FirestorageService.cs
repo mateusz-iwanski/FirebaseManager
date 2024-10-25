@@ -47,7 +47,7 @@ namespace FirebaseManager.Storage
             if (!File.Exists(localFilePath))
             {
                 throw new FileLoadException($"File doesn't exist on {localFilePath}.");
-            }
+            }            
 
             using (var fileStream = new FileStream(localFilePath, FileMode.Open))
             {
@@ -107,13 +107,13 @@ namespace FirebaseManager.Storage
         /// <param name="objectName">Can include directory (name-of-direcory/file)</param>
         /// <returns>true if exists, false if not exists</returns>
         /// <exception cref="FirestorageException">When problem with Firebase service</exception>
-        private async Task<bool> CheckFileExistsAsync(string objectName)
+        public async Task<bool> CheckFileExistsAsync(string firestoreageUri)
         {
             var bucketName = _settings.Value.StorageBucketName;
 
             try
             {
-                await _storageClient.GetObjectAsync(bucketName, objectName);
+                await _storageClient.GetObjectAsync(bucketName, firestoreageUri);
                 return true; 
             }
             catch (Google.GoogleApiException ex) when (ex.HttpStatusCode == System.Net.HttpStatusCode.NotFound)
@@ -122,10 +122,75 @@ namespace FirebaseManager.Storage
             }
             catch (Exception ex)
             {
-                _logger.Error(ex, $"FirebaseError checking file {objectName} in {bucketName}");
-                throw new FirestorageException($"Error checking file {objectName} in {bucketName}", ex);
+                _logger.Error(ex, $"FirebaseError checking file {firestoreageUri} in {bucketName}");
+                throw new FirestorageException($"Error checking file {firestoreageUri} in {bucketName}", ex);
             }
         }
+
+        // how to add directory on firebase storage
+        /// <summary>
+        /// Create a directory on Firebase Storage if it does not exist
+        /// </summary>
+        /// <param name="directoryPath">The directory path to create</param>
+        /// <exception cref="FirestorageException">When problem with Firebase service</exception>
+        public async Task CreateDirectoryAsync(string directoryPath)
+        {
+            var bucketName = _settings.Value.StorageBucketName;
+
+            try
+            {
+                // Check if the directory already exists
+                if (await CheckDirectoryExistsAsync(directoryPath))
+                {
+                    return;
+                }
+
+                // Create the directory by uploading an empty object with a trailing slash
+                await _storageClient.UploadObjectAsync(bucketName, directoryPath + "/", null, new MemoryStream());
+
+                _logger.Info($"Directory {directoryPath} created in {bucketName}");
+            }
+            catch (Google.GoogleApiException ex)
+            {
+                _logger.Error(ex, $"Error creating directory {directoryPath} in {bucketName}. Status code {ex.HttpStatusCode}");
+                throw new FirestorageException($"FirebaseError creating directory {directoryPath} in {bucketName}. Status code {ex.HttpStatusCode}", ex);
+            }
+            catch (Exception ex)
+            {
+                _logger.Error(ex, $"Error creating directory {directoryPath} in {bucketName}");
+                throw new FirestorageException($"FirebaseError creating directory {directoryPath} in {bucketName}", ex);
+            }
+        }
+
+        /// <summary>
+        /// Check if a directory exists in Firebase Storage
+        /// </summary>
+        /// <param name="directoryPath">The directory path to check</param>
+        /// <returns>true if the directory exists, false otherwise</returns>
+        /// <exception cref="FirestorageException">When problem with Firebase service</exception>
+        public async Task<bool> CheckDirectoryExistsAsync(string directoryPath)
+        {
+            var bucketName = _settings.Value.StorageBucketName;
+
+            try
+            {
+                // Check if the directory exists by attempting to get its metadata
+                var storageObject = await _storageClient.GetObjectAsync(bucketName, directoryPath + "/");
+                return storageObject != null;
+            }
+            catch (Google.GoogleApiException ex) when (ex.HttpStatusCode == System.Net.HttpStatusCode.NotFound)
+            {
+                return false;
+            }
+            catch (Exception ex)
+            {
+                _logger.Error(ex, $"FirebaseError checking directory {directoryPath} in {bucketName}");
+                throw new FirestorageException($"Error checking directory {directoryPath} in {bucketName}", ex);
+            }
+        }
+
+
+
 
     }
 }
