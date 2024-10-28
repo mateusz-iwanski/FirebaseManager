@@ -36,6 +36,8 @@ namespace FirebaseManager.Storage
 
         /// <summary>
         /// Upload file to Firebase Storage
+        /// 
+        /// If file exists on firebase storage, it will not be overwritten.
         /// </summary>
         /// <param name="localFilePath">Path to file</param>
         /// <param name="objectName">May contain a directory (directory/filename). If the directory does not exist, it will be created</param>
@@ -52,6 +54,12 @@ namespace FirebaseManager.Storage
             using (var fileStream = new FileStream(localFilePath, FileMode.Open))
             {
                 var bucketName = _settings.Value.StorageBucketName;
+
+                if (!await CheckFileExistsAsync($"{bucketName}/{objectName}"))
+                {
+                    _logger.Info($"File {localFilePath} already exists in {bucketName}/{objectName}");
+                    return;
+                }
 
                 try 
                 { 
